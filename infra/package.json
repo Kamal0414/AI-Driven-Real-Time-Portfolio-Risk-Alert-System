@@ -1,0 +1,25 @@
+{
+  "name": "@prr/infra",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AWS CDK infrastructure for the Portfolio Risk Alert System",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy --all --require-approval never",
+    "destroy": "cdk destroy --all --force",
+    "clean": "rm -rf dist cdk.out"
+  },
+  "dependencies": {
+    "@prr/shared": "*",
+    "aws-cdk-lib": "^2.150.0",
+    "constructs": "^10.3.0",
+    "source-map-support": "^0.5.21"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "aws-cdk": "^2.150.0",
+    "typescript": "^5.5.3"
+  }
+}
