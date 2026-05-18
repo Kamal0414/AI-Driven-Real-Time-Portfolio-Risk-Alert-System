@@ -18,7 +18,7 @@ const env: cdk.Environment = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
 };
 
-// --- Foundation stacks ---
+// --- Foundation stacks (no Lambda dependencies) ---
 
 const dataStack = new DataStack(app, `${config.prefix}-data`, {
   env,
@@ -30,23 +30,17 @@ const eventsStack = new EventsStack(app, `${config.prefix}-events`, {
   config,
 });
 
-const apiStack = new ApiStack(app, `${config.prefix}-api`, {
-  env,
-  config,
-});
-
-// --- Service stacks (depend on foundation) ---
+// --- Service stacks (Lambdas only — no API routes) ---
+// They expose Lambda references via public properties; ApiStack wires routes.
 
 const portfolioStack = new PortfolioStack(app, `${config.prefix}-portfolio`, {
   env,
   config,
   portfoliosTable: dataStack.portfoliosTable,
   eventBus: eventsStack.eventBus,
-  httpApi: apiStack.httpApi,
 });
 portfolioStack.addDependency(dataStack);
 portfolioStack.addDependency(eventsStack);
-portfolioStack.addDependency(apiStack);
 
 const marketDataStack = new MarketDataStack(app, `${config.prefix}-market-data`, {
   env,
@@ -76,10 +70,23 @@ const aiInsightStack = new AiInsightStack(app, `${config.prefix}-ai-insight`, {
   alertsTable: dataStack.alertsTable,
   eventBus: eventsStack.eventBus,
   aiQueue: eventsStack.aiQueue,
-  httpApi: apiStack.httpApi,
 });
 aiInsightStack.addDependency(dataStack);
 aiInsightStack.addDependency(eventsStack);
-aiInsightStack.addDependency(apiStack);
+
+// --- API stack (depends on service stacks for Lambda refs) ---
+
+const apiStack = new ApiStack(app, `${config.prefix}-api`, {
+  env,
+  config,
+  listPortfoliosFn: portfolioStack.listPortfoliosFn,
+  getPortfolioFn: portfolioStack.getPortfolioFn,
+  createPortfolioFn: portfolioStack.createPortfolioFn,
+  updateHoldingsFn: portfolioStack.updateHoldingsFn,
+  getInsightsFn: aiInsightStack.getInsightsFn,
+  getLatestInsightsFn: aiInsightStack.getLatestInsightsFn,
+});
+apiStack.addDependency(portfolioStack);
+apiStack.addDependency(aiInsightStack);
 
 app.synth();

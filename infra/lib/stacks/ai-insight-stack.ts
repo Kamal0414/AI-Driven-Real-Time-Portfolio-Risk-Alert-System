@@ -2,9 +2,8 @@ import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
-import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
-import * as integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { Construct } from 'constructs';
 import * as path from 'path';
 import { NodeLambda } from '../constructs/node-lambda';
@@ -16,34 +15,30 @@ export interface AiInsightStackProps extends cdk.StackProps {
   alertsTable: dynamodb.Table;
   eventBus: events.IEventBus;
   aiQueue: sqs.Queue;
-  httpApi: apigatewayv2.HttpApi;
 }
 
 /**
- * AiInsightStack — consumes risk breaches, generates AI commentary.
+ * AiInsightStack — consumes risk breaches, generates AI commentary,
+ * and exposes read APIs.
+ *
+ * Lambdas are created here; the read API routes are wired in ApiStack
+ * to keep all HTTP routes in one place (avoids cross-stack cycles).
  *
  * Flow:
- * 1. EventBridge rule routes RiskThresholdBreached → SQS AI queue.
+ * 1. EventBridge rule (in EventsStack) routes RiskThresholdBreached -> SQS.
  * 2. AI Lambda is triggered from SQS (batch size 1).
  * 3. Lambda calls LLM provider (mock by default).
  * 4. Writes Insight to DynamoDB.
  * 5. Publishes AIInsightGenerated event.
- *
- * Also exposes a read API:
- * - GET /portfolios/{portfolioId}/insights
- * - GET /insights/latest (dashboard aggregation)
- *
- * Why SQS between EventBridge and AI Lambda?
- * - LLM calls are slow (2-30s) and unreliable.
- * - SQS provides automatic retries with exponential backoff.
- * - DLQ captures permanent failures for investigation.
- * - Decouples the Risk Service from AI availability.
  */
 export class AiInsightStack extends cdk.Stack {
+  public readonly getInsightsFn: lambda.IFunction;
+  public readonly getLatestInsightsFn: lambda.IFunction;
+
   constructor(scope: Construct, id: string, props: AiInsightStackProps) {
     super(scope, id, props);
 
-    const { config, insightsTable, alertsTable, eventBus, aiQueue, httpApi } = props;
+    const { config, insightsTable, alertsTable, eventBus, aiQueue } = props;
 
     const commonEnv: Record<string, string> = {
       TABLE_INSIGHTS: insightsTable.tableName,
@@ -57,18 +52,13 @@ export class AiInsightStack extends cdk.Stack {
 
     const servicesRoot = path.join(__dirname, '../../../services/ai-insight-service/src/handlers');
 
-    // The EventBridge Rule that routes RiskThresholdBreached -> aiQueue
-    // is defined in EventsStack to avoid a circular dependency between
-    // this stack and EventsStack (rule needs queue + bus, queue lives
-    // in EventsStack).
-
     // ─── AI Processing Lambda (SQS triggered) ─────────────────────
     const onRiskBreachedFn = new NodeLambda(this, 'OnRiskBreached', {
       entry: path.join(servicesRoot, 'onRiskBreached.ts'),
       functionName: `${config.prefix}-ai-on-breach`,
       description: 'Generate AI insight from risk breach event',
       memorySize: 256,
-      timeout: cdk.Duration.seconds(45), // LLM calls can be slow
+      timeout: cdk.Duration.seconds(45),
       environment: commonEnv,
     });
     insightsTable.grantReadWriteData(onRiskBreachedFn.function);
@@ -76,7 +66,6 @@ export class AiInsightStack extends cdk.Stack {
     eventBus.grantPutEventsTo(onRiskBreachedFn.function);
     aiQueue.grantConsumeMessages(onRiskBreachedFn.function);
 
-    // Wire SQS → Lambda with batch size 1 (one breach = one insight)
     onRiskBreachedFn.function.addEventSource(
       new lambdaEventSources.SqsEventSource(aiQueue, {
         batchSize: 1,
@@ -103,16 +92,8 @@ export class AiInsightStack extends cdk.Stack {
     });
     insightsTable.grantReadData(getLatestFn.function);
 
-    // ─── API Routes ───────────────────────────────────────────────
-    httpApi.addRoutes({
-      path: '/portfolios/{portfolioId}/insights',
-      methods: [apigatewayv2.HttpMethod.GET],
-      integration: new integrations.HttpLambdaIntegration('GetInsightsInt', getInsightsFn.function),
-    });
-    httpApi.addRoutes({
-      path: '/insights/latest',
-      methods: [apigatewayv2.HttpMethod.GET],
-      integration: new integrations.HttpLambdaIntegration('GetLatestInt', getLatestFn.function),
-    });
+    // Expose read Lambdas for ApiStack to wire routes
+    this.getInsightsFn = getInsightsFn.function;
+    this.getLatestInsightsFn = getLatestFn.function;
   }
 }

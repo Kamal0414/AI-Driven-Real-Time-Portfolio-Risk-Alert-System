@@ -1,8 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
-import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
-import * as integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import * as path from 'path';
 import { NodeLambda } from '../constructs/node-lambda';
@@ -12,25 +11,32 @@ export interface PortfolioStackProps extends cdk.StackProps {
   config: AppConfig;
   portfoliosTable: dynamodb.Table;
   eventBus: events.IEventBus;
-  httpApi: apigatewayv2.HttpApi;
 }
 
 /**
  * PortfolioStack — CRUD service for client portfolios.
  *
- * Lambdas:
- * - listPortfolios  GET  /portfolios
- * - getPortfolio    GET  /portfolios/{portfolioId}
- * - createPortfolio POST /portfolios
- * - updateHoldings  PUT  /portfolios/{portfolioId}/holdings
+ * Lambdas are created here; routes are wired in ApiStack so that all
+ * routes live alongside the HttpApi (avoids cross-stack permission cycles).
  *
- * On create/update → publishes PortfolioUpdated event.
+ * Lambdas:
+ * - listPortfoliosFn  -> GET /portfolios
+ * - getPortfolioFn    -> GET /portfolios/{portfolioId}
+ * - createPortfolioFn -> POST /portfolios
+ * - updateHoldingsFn  -> PUT /portfolios/{portfolioId}/holdings
+ *
+ * On create/update -> publishes PortfolioUpdated event.
  */
 export class PortfolioStack extends cdk.Stack {
+  public readonly listPortfoliosFn: lambda.IFunction;
+  public readonly getPortfolioFn: lambda.IFunction;
+  public readonly createPortfolioFn: lambda.IFunction;
+  public readonly updateHoldingsFn: lambda.IFunction;
+
   constructor(scope: Construct, id: string, props: PortfolioStackProps) {
     super(scope, id, props);
 
-    const { config, portfoliosTable, eventBus, httpApi } = props;
+    const { config, portfoliosTable, eventBus } = props;
 
     const commonEnv: Record<string, string> = {
       TABLE_PORTFOLIOS: portfoliosTable.tableName,
@@ -78,26 +84,10 @@ export class PortfolioStack extends cdk.Stack {
     portfoliosTable.grantReadWriteData(updateFn.function);
     eventBus.grantPutEventsTo(updateFn.function);
 
-    // ─── API Routes ───────────────────────────────────────────────
-    httpApi.addRoutes({
-      path: '/portfolios',
-      methods: [apigatewayv2.HttpMethod.GET],
-      integration: new integrations.HttpLambdaIntegration('ListInt', listFn.function),
-    });
-    httpApi.addRoutes({
-      path: '/portfolios/{portfolioId}',
-      methods: [apigatewayv2.HttpMethod.GET],
-      integration: new integrations.HttpLambdaIntegration('GetInt', getFn.function),
-    });
-    httpApi.addRoutes({
-      path: '/portfolios',
-      methods: [apigatewayv2.HttpMethod.POST],
-      integration: new integrations.HttpLambdaIntegration('CreateInt', createFn.function),
-    });
-    httpApi.addRoutes({
-      path: '/portfolios/{portfolioId}/holdings',
-      methods: [apigatewayv2.HttpMethod.PUT],
-      integration: new integrations.HttpLambdaIntegration('UpdateInt', updateFn.function),
-    });
+    // Expose Lambda references for ApiStack to wire routes
+    this.listPortfoliosFn = listFn.function;
+    this.getPortfolioFn = getFn.function;
+    this.createPortfolioFn = createFn.function;
+    this.updateHoldingsFn = updateFn.function;
   }
 }
