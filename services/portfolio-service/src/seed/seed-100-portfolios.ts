@@ -62,13 +62,13 @@ const PORTFOLIO_STYLES = [
 const rand = (min: number, max: number): number =>
   Math.floor(Math.random() * (max - min + 1)) + min;
 
-const pick = <T>(arr: readonly T[]): T => arr[rand(0, arr.length - 1)];
+const pick = <T>(arr: readonly T[]): T => arr[rand(0, arr.length - 1)]!;
 
 const shuffle = <T>(arr: T[]): T[] => {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i--) {
     const j = rand(0, i);
-    [copy[i], copy[j]] = [copy[j], copy[i]];
+    [copy[i], copy[j]] = [copy[j]!, copy[i]!];
   }
   return copy;
 };
@@ -92,7 +92,7 @@ const generateWeights = (count: number): number[] => {
   // Round to 4 decimal places, then fix the last weight to ensure exact sum = 1
   const rounded = weights.map((w) => Math.round(w * 10000) / 10000);
   const sum = rounded.reduce((s, w) => s + w, 0);
-  rounded[rounded.length - 1] = Math.round((rounded[rounded.length - 1] + (1 - sum)) * 10000) / 10000;
+  rounded[rounded.length - 1] = Math.round((rounded[rounded.length - 1]! + (1 - sum)) * 10000) / 10000;
 
   return rounded;
 };
@@ -110,7 +110,7 @@ const generatePortfolio = (index: number): Portfolio => {
   const cash = Math.round(portfolioValue * cashPct * 100) / 100;
 
   const holdings: Holding[] = selectedSymbols.map((symbol, i) => {
-    const targetValue = investedValue * weights[i];
+    const targetValue = investedValue * weights[i]!;
     const price = REFERENCE_PRICES[symbol] ?? 100;
     const quantity = Math.max(1, Math.round(targetValue / price));
     return { symbol, quantity };
@@ -118,7 +118,7 @@ const generatePortfolio = (index: number): Portfolio => {
 
   const targetAllocation: TargetAllocation[] = selectedSymbols.map((symbol, i) => ({
     symbol,
-    weight: weights[i],
+    weight: weights[i]!,
   }));
 
   const paddedIndex = String(index + 1).padStart(4, '0');

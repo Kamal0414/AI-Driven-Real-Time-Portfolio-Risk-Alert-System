@@ -28,7 +28,7 @@ export const handler = withErrorHandling(
       name: body.name,
       holdings: body.holdings,
       targetAllocation: body.targetAllocation,
-      cash: body.cash,
+      ...(body.cash !== undefined && { cash: body.cash }),
     });
 
     return created(portfolio);

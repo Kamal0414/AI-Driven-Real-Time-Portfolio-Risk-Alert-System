@@ -29,7 +29,7 @@ export const handler = withErrorHandling(
     const updated = await portfolioService.updateHoldings(portfolioId, {
       holdings: body.holdings,
       targetAllocation: body.targetAllocation,
-      cash: body.cash,
+      ...(body.cash !== undefined && { cash: body.cash }),
     });
 
     return ok(updated);
