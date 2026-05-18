@@ -1,0 +1,27 @@
+{
+  "name": "portfolio-risk-alert-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-Driven Real-Time Portfolio Risk Alert System (event-driven, AWS-native MVP)",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "infra",
+    "frontend/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "typescript": "^5.5.3"
+  }
+}
