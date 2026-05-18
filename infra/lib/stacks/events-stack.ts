@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import type { AppConfig } from '../config/env';
@@ -58,6 +59,20 @@ export class EventsStack extends cdk.Stack {
         maxReceiveCount: 3,
       },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // ─── EventBridge Rule: RiskThresholdBreached -> SQS ───────────
+    // Kept in this stack (not AiInsightStack) so CDK doesn't create a
+    // circular dependency between the rule, the queue and the bus.
+    new events.Rule(this, 'RiskBreachToSqs', {
+      eventBus: this.eventBus,
+      ruleName: `${config.prefix}-risk-breach-to-ai`,
+      description: 'Routes RiskThresholdBreached events to the AI SQS queue',
+      eventPattern: {
+        source: ['prr.risk-service'],
+        detailType: ['RiskThresholdBreached'],
+      },
+      targets: [new targets.SqsQueue(this.aiQueue)],
     });
 
     // ─── Outputs ──────────────────────────────────────────────────

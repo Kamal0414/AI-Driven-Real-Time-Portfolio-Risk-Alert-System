@@ -1,7 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
-import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
@@ -58,17 +57,10 @@ export class AiInsightStack extends cdk.Stack {
 
     const servicesRoot = path.join(__dirname, '../../../services/ai-insight-service/src/handlers');
 
-    // ─── EventBridge Rule: RiskThresholdBreached → SQS ────────────
-    new events.Rule(this, 'RiskBreachToSqs', {
-      eventBus,
-      ruleName: `${config.prefix}-risk-breach-to-ai`,
-      description: 'Routes RiskThresholdBreached events to the AI SQS queue',
-      eventPattern: {
-        source: ['prr.risk-service'],
-        detailType: ['RiskThresholdBreached'],
-      },
-      targets: [new targets.SqsQueue(aiQueue)],
-    });
+    // The EventBridge Rule that routes RiskThresholdBreached -> aiQueue
+    // is defined in EventsStack to avoid a circular dependency between
+    // this stack and EventsStack (rule needs queue + bus, queue lives
+    // in EventsStack).
 
     // ─── AI Processing Lambda (SQS triggered) ─────────────────────
     const onRiskBreachedFn = new NodeLambda(this, 'OnRiskBreached', {
