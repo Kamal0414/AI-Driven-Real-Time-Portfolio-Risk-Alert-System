@@ -10,9 +10,8 @@ let _doc: DynamoDBDocumentClient | null = null;
 
 export const getDynamoClient = (): DynamoDBDocumentClient => {
   if (_doc) return _doc;
-  const base = new DynamoDBClient({
-    region: process.env[ENV.AWS_REGION] ?? process.env.AWS_REGION,
-  });
+  const region = process.env[ENV.AWS_REGION] ?? process.env.AWS_REGION;
+  const base = new DynamoDBClient(region ? { region } : {});
   _doc = DynamoDBDocumentClient.from(base, {
     marshallOptions: {
       removeUndefinedValues: true,
