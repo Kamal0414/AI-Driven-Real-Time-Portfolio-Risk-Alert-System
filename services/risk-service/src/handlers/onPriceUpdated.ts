@@ -85,7 +85,7 @@ export const handler = async (
       for (const breach of breaches) {
         const breachKey = buildBreachKey({
           type: breach.type,
-          symbol: breach.metrics.symbol,
+          ...(breach.metrics.symbol !== undefined && { symbol: breach.metrics.symbol }),
           asOf: valuation.asOf,
         });
 
