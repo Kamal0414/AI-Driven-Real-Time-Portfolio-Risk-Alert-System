@@ -36,12 +36,18 @@ export const loadAllPrices = async (): Promise<PreviousPriceData[] | undefined> 
     return undefined;
   }
 
-  return result.Items.map((item) => ({
-    symbol: item['symbol'] as string,
-    price: item['price'] as number,
-    previousClose: item['previousClose'] as number,
-    lastCloseDate: item['lastCloseDate'] as string | undefined,
-  }));
+  return result.Items.map((item) => {
+    const data: PreviousPriceData = {
+      symbol: item['symbol'] as string,
+      price: item['price'] as number,
+      previousClose: item['previousClose'] as number,
+    };
+    const lastCloseDate = item['lastCloseDate'] as string | undefined;
+    if (lastCloseDate) {
+      data.lastCloseDate = lastCloseDate;
+    }
+    return data;
+  });
 };
 
 /**
