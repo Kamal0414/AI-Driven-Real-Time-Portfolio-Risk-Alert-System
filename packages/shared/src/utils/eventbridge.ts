@@ -12,9 +12,8 @@ import type { EventEnvelope } from '../events/envelope.js';
 let _client: EventBridgeClient | null = null;
 const getClient = (): EventBridgeClient => {
   if (!_client) {
-    _client = new EventBridgeClient({
-      region: process.env[ENV.AWS_REGION] ?? process.env.AWS_REGION,
-    });
+    const region = process.env[ENV.AWS_REGION] ?? process.env.AWS_REGION;
+    _client = new EventBridgeClient(region ? { region } : {});
   }
   return _client;
 };
