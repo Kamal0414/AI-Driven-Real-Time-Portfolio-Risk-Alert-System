@@ -3,7 +3,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as scheduler from 'aws-cdk-lib/aws-scheduler';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import type { Construct } from 'constructs';
+import { Construct } from 'constructs';
 import * as path from 'path';
 import { NodeLambda } from '../constructs/node-lambda';
 import type { AppConfig } from '../config/env';

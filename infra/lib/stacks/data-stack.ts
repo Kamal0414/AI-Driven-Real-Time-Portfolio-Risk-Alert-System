@@ -1,6 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import type { Construct } from 'constructs';
+import { Construct } from 'constructs';
 import type { AppConfig } from '../config/env';
 
 export interface DataStackProps extends cdk.StackProps {

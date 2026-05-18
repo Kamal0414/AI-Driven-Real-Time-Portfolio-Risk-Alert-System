@@ -1,7 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
-import type { Construct } from 'constructs';
+import { Construct } from 'constructs';
 import type { AppConfig } from '../config/env';
 
 export interface EventsStackProps extends cdk.StackProps {

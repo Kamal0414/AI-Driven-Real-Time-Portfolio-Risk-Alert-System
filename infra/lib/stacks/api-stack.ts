@@ -1,6 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
-import type { Construct } from 'constructs';
+import { Construct } from 'constructs';
 import type { AppConfig } from '../config/env';
 
 export interface ApiStackProps extends cdk.StackProps {
