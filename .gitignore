@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+cdk.out/
+
+# logs
+*.log
+npm-debug.log*
+
+# env / secrets
+.env
+.env.local
+.env.*.local
+
+# editors
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# coverage
+coverage/
+.nyc_output/
