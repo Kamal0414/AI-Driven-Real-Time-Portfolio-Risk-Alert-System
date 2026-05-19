@@ -3,6 +3,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as scheduler from 'aws-cdk-lib/aws-scheduler';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import * as path from 'path';
 import { NodeLambda } from '../constructs/node-lambda';
@@ -15,20 +16,19 @@ export interface MarketDataStackProps extends cdk.StackProps {
 }
 
 /**
- * MarketDataStack — simulates live market price streaming.
+ * MarketDataStack — simulates live market price streaming + read API.
  *
- * Uses EventBridge Scheduler to invoke the tick Lambda on a fixed rate
- * (default 7s). The Lambda:
- * 1. Generates bounded random-walk prices for 20 equities.
- * 2. Writes latest prices to DynamoDB (Prices table).
- * 3. Publishes a PriceUpdated event to EventBridge.
+ * EventBridge Scheduler invokes the tick Lambda every 1 minute (the
+ * minimum supported by AWS Scheduler rate expressions). The tick:
+ *   1. Generates bounded random-walk prices for 20 equities.
+ *   2. Writes latest prices to DynamoDB.
+ *   3. Publishes a PriceUpdated event to EventBridge.
  *
- * Why EventBridge Scheduler over CloudWatch Events rule?
- * - Native rate(Xs) granularity down to 1 second.
- * - 14M free invocations/month (far more than we need).
- * - Built-in retry + DLQ support.
+ * Also exposes a read API (GET /prices) wired in ApiStack.
  */
 export class MarketDataStack extends cdk.Stack {
+  public readonly getPricesFn: lambda.IFunction;
+
   constructor(scope: Construct, id: string, props: MarketDataStackProps) {
     super(scope, id, props);
 
@@ -42,7 +42,7 @@ export class MarketDataStack extends cdk.Stack {
 
     const servicesRoot = path.join(__dirname, '../../../services/market-data-service/src/handlers');
 
-    // ─── Tick Handler Lambda ──────────────────────────────────────
+    // ─── Tick Handler Lambda (Scheduler triggered) ────────────────
     const tickFn = new NodeLambda(this, 'TickHandler', {
       entry: path.join(servicesRoot, 'tickHandler.ts'),
       functionName: `${config.prefix}-market-tick`,
@@ -53,8 +53,17 @@ export class MarketDataStack extends cdk.Stack {
     pricesTable.grantReadWriteData(tickFn.function);
     eventBus.grantPutEventsTo(tickFn.function);
 
-    // ─── EventBridge Scheduler (rate-based) ───────────────────────
-    // Scheduler needs an IAM role to invoke the Lambda target.
+    // ─── Get Prices Lambda (API read) ─────────────────────────────
+    const getPricesFn = new NodeLambda(this, 'GetPrices', {
+      entry: path.join(servicesRoot, 'getPrices.ts'),
+      functionName: `${config.prefix}-get-prices`,
+      description: 'Return latest prices for all symbols',
+      environment: commonEnv,
+    });
+    pricesTable.grantReadData(getPricesFn.function);
+    this.getPricesFn = getPricesFn.function;
+
+    // ─── EventBridge Scheduler ────────────────────────────────────
     const schedulerRole = new iam.Role(this, 'SchedulerRole', {
       assumedBy: new iam.ServicePrincipal('scheduler.amazonaws.com'),
       description: 'Role for EventBridge Scheduler to invoke market-tick Lambda',
@@ -64,15 +73,13 @@ export class MarketDataStack extends cdk.Stack {
     new scheduler.CfnSchedule(this, 'MarketTickSchedule', {
       name: `${config.prefix}-market-tick-schedule`,
       description: `Triggers market price simulation every ${config.tickIntervalMinutes} minute(s)`,
-      scheduleExpression: 'rate(1 minutes)',
+      scheduleExpression: `rate(${config.tickIntervalMinutes} minutes)`,
       flexibleTimeWindow: { mode: 'OFF' },
       state: 'ENABLED',
       target: {
         arn: tickFn.function.functionArn,
         roleArn: schedulerRole.roleArn,
-        retryPolicy: {
-          maximumRetryAttempts: 0, // Don't retry missed ticks — next one comes in 7s
-        },
+        retryPolicy: { maximumRetryAttempts: 0 },
       },
     });
   }

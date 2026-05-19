@@ -9,16 +9,17 @@ export const newEventId = (): string => uuid();
 /**
  * Build a deterministic idempotency key for risk alerts.
  *
- * Same portfolio + same breach type + same symbol + same minute
- * collapses into one logical alert, so a stream of price ticks during a
- * volatile minute won't spam the AI service.
+ * Same portfolio + same breach type + same symbol + same hour
+ * collapses into one logical alert. This means an ongoing breach
+ * (e.g. AAPL stays > 20% for 2 hours) generates exactly 2 alerts,
+ * not 120. New breaches in a different hour will still alert.
  */
 export const buildBreachKey = (input: {
   type: string;
   symbol?: string;
   asOf: string;
 }): string => {
-  const minuteBucket = input.asOf.slice(0, 16); // YYYY-MM-DDTHH:MM
+  const hourBucket = input.asOf.slice(0, 13); // YYYY-MM-DDTHH
   const sym = input.symbol ?? 'PORTFOLIO';
-  return `${input.type}#${sym}#${minuteBucket}`;
+  return `${input.type}#${sym}#${hourBucket}`;
 };

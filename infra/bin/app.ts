@@ -31,7 +31,6 @@ const eventsStack = new EventsStack(app, `${config.prefix}-events`, {
 });
 
 // --- Service stacks (Lambdas only — no API routes) ---
-// They expose Lambda references via public properties; ApiStack wires routes.
 
 const portfolioStack = new PortfolioStack(app, `${config.prefix}-portfolio`, {
   env,
@@ -85,8 +84,13 @@ const apiStack = new ApiStack(app, `${config.prefix}-api`, {
   updateHoldingsFn: portfolioStack.updateHoldingsFn,
   getInsightsFn: aiInsightStack.getInsightsFn,
   getLatestInsightsFn: aiInsightStack.getLatestInsightsFn,
+  getPricesFn: marketDataStack.getPricesFn,
+  listValuationsFn: riskStack.listValuationsFn,
+  getValuationFn: riskStack.getValuationFn,
 });
 apiStack.addDependency(portfolioStack);
 apiStack.addDependency(aiInsightStack);
+apiStack.addDependency(marketDataStack);
+apiStack.addDependency(riskStack);
 
 app.synth();
