@@ -3,6 +3,10 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
+import * as path from 'path';
+
+/** Absolute path to the monorepo root package-lock.json. */
+const REPO_LOCK_FILE = path.resolve(__dirname, '../../../package-lock.json');
 
 
 /**
@@ -62,6 +66,8 @@ export class NodeLambda extends Construct {
 
     this.function = new nodejs.NodejsFunction(this, 'Fn', {
       entry: props.entry,
+      depsLockFilePath: REPO_LOCK_FILE,
+      projectRoot: path.resolve(__dirname, '../../..'),
       handler: props.handler ?? 'handler',
       functionName: props.functionName,
       description: props.description,
