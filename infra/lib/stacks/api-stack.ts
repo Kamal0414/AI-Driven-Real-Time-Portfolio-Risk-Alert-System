@@ -7,30 +7,26 @@ import type { AppConfig } from '../config/env';
 
 export interface ApiStackProps extends cdk.StackProps {
   config: AppConfig;
-  /** Lambdas exposed by PortfolioStack. */
+  /** Portfolio Service Lambdas. */
   listPortfoliosFn: lambda.IFunction;
   getPortfolioFn: lambda.IFunction;
   createPortfolioFn: lambda.IFunction;
   updateHoldingsFn: lambda.IFunction;
-  /** Lambdas exposed by AiInsightStack. */
+  /** AI Insight Service Lambdas. */
   getInsightsFn: lambda.IFunction;
   getLatestInsightsFn: lambda.IFunction;
+  /** Market Data Service Lambdas. */
+  getPricesFn: lambda.IFunction;
+  /** Risk Service Lambdas. */
+  listValuationsFn: lambda.IFunction;
+  getValuationFn: lambda.IFunction;
 }
 
 /**
  * ApiStack — HTTP API (API Gateway v2) + ALL routes for the system.
  *
- * Why all routes here? When a route in stack A targets a Lambda in stack B,
- * CDK creates a Lambda permission resource that references both. Putting
- * the API + routes in the same stack and importing Lambda refs from
- * service stacks avoids the cross-stack permission cycle.
- *
- * Dependency direction: ApiStack -> PortfolioStack, ApiStack -> AiInsightStack
- *
- * Why a single HTTP API with multiple route integrations?
- * - Cheaper than REST API ($1/M vs $3.50/M requests).
- * - 1M requests/month free tier (12 months).
- * - Single base URL for the React dashboard to target.
+ * All routes live here to avoid cross-stack permission cycles.
+ * Dependency direction: ApiStack -> all service stacks (one-way).
  */
 export class ApiStack extends cdk.Stack {
   public readonly httpApi: apigatewayv2.HttpApi;
@@ -90,6 +86,25 @@ export class ApiStack extends cdk.Stack {
       path: '/insights/latest',
       methods: [apigatewayv2.HttpMethod.GET],
       integration: new integrations.HttpLambdaIntegration('GetLatestInt', props.getLatestInsightsFn),
+    });
+
+    // ─── Prices route ─────────────────────────────────────────────
+    this.httpApi.addRoutes({
+      path: '/prices',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: new integrations.HttpLambdaIntegration('GetPricesInt', props.getPricesFn),
+    });
+
+    // ─── Valuation routes ─────────────────────────────────────────
+    this.httpApi.addRoutes({
+      path: '/valuations/latest',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: new integrations.HttpLambdaIntegration('ListValInt', props.listValuationsFn),
+    });
+    this.httpApi.addRoutes({
+      path: '/portfolios/{portfolioId}/valuation',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: new integrations.HttpLambdaIntegration('GetValInt', props.getValuationFn),
     });
 
     // ─── Outputs ──────────────────────────────────────────────────

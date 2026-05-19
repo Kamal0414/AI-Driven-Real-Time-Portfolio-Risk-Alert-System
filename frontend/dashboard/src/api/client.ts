@@ -1,10 +1,7 @@
-import type { ApiResponse, Portfolio, Insight } from '../types';
+import type { ApiResponse, Portfolio, Insight, Valuation } from '../types';
 
 /**
  * API client for the Portfolio Risk Alert backend.
- *
- * Reads the base URL from VITE_API_URL at build time. Falls back to
- * http://localhost:3000 for local development.
  */
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000').replace(/\/$/, '');
@@ -64,6 +61,27 @@ export interface ListInsightsResponse {
   count: number;
 }
 
+export interface PriceData {
+  symbol: string;
+  price: number;
+  previousClose: number;
+  asOf: string;
+}
+
+export interface ListPricesResponse {
+  prices: PriceData[];
+  count: number;
+}
+
+export interface ListValuationsResponse {
+  valuations: Valuation[];
+  count: number;
+}
+
+export interface GetValuationResponse {
+  valuation: Valuation | null;
+}
+
 export const api = {
   listPortfolios: (): Promise<ListPortfoliosResponse> => request('/portfolios'),
   getPortfolio: (id: string): Promise<Portfolio> => request(`/portfolios/${encodeURIComponent(id)}`),
@@ -71,6 +89,10 @@ export const api = {
     request(`/portfolios/${encodeURIComponent(id)}/insights?limit=${limit}`),
   getLatestInsights: (limit = 20): Promise<ListInsightsResponse> =>
     request(`/insights/latest?limit=${limit}`),
+  getPrices: (): Promise<ListPricesResponse> => request('/prices'),
+  getLatestValuations: (): Promise<ListValuationsResponse> => request('/valuations/latest'),
+  getPortfolioValuation: (id: string): Promise<GetValuationResponse> =>
+    request(`/portfolios/${encodeURIComponent(id)}/valuation`),
 };
 
 export { ApiClientError };

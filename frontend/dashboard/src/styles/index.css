@@ -141,6 +141,77 @@ code {
   .page--list { grid-template-columns: 1.6fr 1fr; }
 }
 
+.page__left { display: flex; flex-direction: column; gap: 1.5rem; }
+.page__right { /* inherits panel styles */ }
+
+/* ─── Market Prices ────────────────────────────────────────────────── */
+
+.market-prices__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.market-prices__header .section-title { margin: 0; }
+
+.market-prices__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 0.5rem;
+}
+
+.price-chip {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.price-chip--up { border-left: 3px solid var(--risk-low); }
+.price-chip--down { border-left: 3px solid var(--risk-high); }
+
+.price-chip__symbol {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-family: 'SF Mono', Consolas, monospace;
+}
+.price-chip__price {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.price-chip__change {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.price-chip--up .price-chip__change { color: var(--risk-low); }
+.price-chip--down .price-chip__change { color: var(--risk-high); }
+.price-chip__prev {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* ─── Portfolio card value ─────────────────────────────────────────── */
+
+.portfolio-card__value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0.25rem 0;
+}
+.portfolio-card__total {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.portfolio-card__change {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.change--up { color: var(--risk-low); }
+.change--down { color: var(--risk-high); }
+
 .panel {
   background: var(--bg-panel);
   border: 1px solid var(--border);

@@ -10,8 +10,10 @@ export const newEventId = (): string => uuid();
  * Build a deterministic idempotency key for risk alerts.
  *
  * Same portfolio + same breach type + same symbol + same minute
- * collapses into one logical alert, so a stream of price ticks during a
- * volatile minute won't spam the AI service.
+ * collapses into one logical alert. This prevents a burst of price
+ * ticks within the same minute from spamming multiple alerts.
+ * Each new minute allows a fresh alert — so ongoing breaches
+ * produce ~1 alert/minute with updated values.
  */
 export const buildBreachKey = (input: {
   type: string;

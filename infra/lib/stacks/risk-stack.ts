@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import * as path from 'path';
 import { NodeLambda } from '../constructs/node-lambda';
@@ -18,19 +19,12 @@ export interface RiskStackProps extends cdk.StackProps {
 
 /**
  * RiskStack — subscribes to events, computes valuations, detects breaches.
- *
- * Event subscriptions:
- * - PriceUpdated → revalue all portfolios, run rules engine.
- * - PortfolioUpdated → invalidate cached portfolio data.
- *
- * On breach → publishes RiskThresholdBreached event.
- *
- * Design notes:
- * - Direct EventBridge→Lambda (no SQS) for low latency on the hot path.
- * - Timeout 30s to handle 100 portfolios × 20 symbols per tick.
- * - Memory 512MB for heavier computation.
+ * Also exposes read APIs for current valuations.
  */
 export class RiskStack extends cdk.Stack {
+  public readonly listValuationsFn: lambda.IFunction;
+  public readonly getValuationFn: lambda.IFunction;
+
   constructor(scope: Construct, id: string, props: RiskStackProps) {
     super(scope, id, props);
 
@@ -62,7 +56,6 @@ export class RiskStack extends cdk.Stack {
     alertsTable.grantReadWriteData(onPriceFn.function);
     eventBus.grantPutEventsTo(onPriceFn.function);
 
-    // EventBridge Rule: PriceUpdated → Risk Lambda
     new events.Rule(this, 'PriceUpdatedRule', {
       eventBus,
       ruleName: `${config.prefix}-price-to-risk`,
@@ -71,10 +64,12 @@ export class RiskStack extends cdk.Stack {
         source: ['prr.market-data-service'],
         detailType: ['PriceUpdated'],
       },
-      targets: [new targets.LambdaFunction(onPriceFn.function, {
-        retryAttempts: 2,
-        maxEventAge: cdk.Duration.minutes(1),
-      })],
+      targets: [
+        new targets.LambdaFunction(onPriceFn.function, {
+          retryAttempts: 2,
+          maxEventAge: cdk.Duration.minutes(1),
+        }),
+      ],
     });
 
     // ─── On Portfolio Updated ─────────────────────────────────────
@@ -91,7 +86,6 @@ export class RiskStack extends cdk.Stack {
     alertsTable.grantReadWriteData(onPortfolioFn.function);
     eventBus.grantPutEventsTo(onPortfolioFn.function);
 
-    // EventBridge Rule: PortfolioUpdated → Risk Lambda
     new events.Rule(this, 'PortfolioUpdatedRule', {
       eventBus,
       ruleName: `${config.prefix}-portfolio-to-risk`,
@@ -100,10 +94,36 @@ export class RiskStack extends cdk.Stack {
         source: ['prr.portfolio-service'],
         detailType: ['PortfolioUpdated'],
       },
-      targets: [new targets.LambdaFunction(onPortfolioFn.function, {
-        retryAttempts: 2,
-        maxEventAge: cdk.Duration.minutes(1),
-      })],
+      targets: [
+        new targets.LambdaFunction(onPortfolioFn.function, {
+          retryAttempts: 2,
+          maxEventAge: cdk.Duration.minutes(1),
+        }),
+      ],
     });
+
+    // ─── List Valuations Lambda (API read) ────────────────────────
+    const listValuationsFn = new NodeLambda(this, 'ListValuations', {
+      entry: path.join(servicesRoot, 'getValuations.ts'),
+      handler: 'listLatest',
+      functionName: `${config.prefix}-list-valuations`,
+      description: 'Return latest valuation for every portfolio',
+      memorySize: 512,
+      timeout: cdk.Duration.seconds(15),
+      environment: commonEnv,
+    });
+    valuationsTable.grantReadData(listValuationsFn.function);
+    this.listValuationsFn = listValuationsFn.function;
+
+    // ─── Get Single Valuation Lambda (API read) ───────────────────
+    const getValuationFn = new NodeLambda(this, 'GetValuation', {
+      entry: path.join(servicesRoot, 'getValuations.ts'),
+      handler: 'getOne',
+      functionName: `${config.prefix}-get-valuation`,
+      description: 'Return latest valuation for one portfolio',
+      environment: commonEnv,
+    });
+    valuationsTable.grantReadData(getValuationFn.function);
+    this.getValuationFn = getValuationFn.function;
   }
 }
