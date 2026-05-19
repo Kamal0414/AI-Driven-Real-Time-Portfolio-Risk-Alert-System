@@ -10,8 +10,8 @@ export interface AppConfig {
   prefix: string;
   /** EventBridge custom bus name. */
   eventBusName: string;
-  /** Market data tick interval in seconds (EventBridge Scheduler rate). */
-  tickIntervalSeconds: number;
+  /** Market data tick interval in minutes (EventBridge Scheduler rate). Minimum 1. */
+  tickIntervalMinutes: number;
   /** DynamoDB billing mode: PAY_PER_REQUEST (Free Tier friendly) or PROVISIONED. */
   billingMode: 'PAY_PER_REQUEST' | 'PROVISIONED';
   /** TTL in hours for Valuations table items. */
@@ -38,7 +38,7 @@ export const getConfig = (): AppConfig => ({
   region: process.env.CDK_DEFAULT_REGION ?? 'us-east-1',
   prefix: 'prr',
   eventBusName: 'portfolio-risk-bus',
-  tickIntervalSeconds: 7,
+  tickIntervalMinutes: 1,
   billingMode: 'PAY_PER_REQUEST',
   valuationTtlHours: 24,
   insightTtlDays: 7,
