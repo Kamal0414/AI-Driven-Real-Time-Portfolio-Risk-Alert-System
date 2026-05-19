@@ -63,8 +63,8 @@ export class MarketDataStack extends cdk.Stack {
 
     new scheduler.CfnSchedule(this, 'MarketTickSchedule', {
       name: `${config.prefix}-market-tick-schedule`,
-      description: `Triggers market price simulation every ${config.tickIntervalSeconds}s`,
-      scheduleExpression: `rate(${config.tickIntervalSeconds} seconds)`,
+      description: `Triggers market price simulation every ${config.tickIntervalMinutes} minute(s)`,
+      scheduleExpression: 'rate(1 minutes)',
       flexibleTimeWindow: { mode: 'OFF' },
       state: 'ENABLED',
       target: {
