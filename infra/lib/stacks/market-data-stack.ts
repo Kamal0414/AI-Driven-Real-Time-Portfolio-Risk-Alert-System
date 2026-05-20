@@ -18,11 +18,13 @@ export interface MarketDataStackProps extends cdk.StackProps {
 /**
  * MarketDataStack — simulates live market price streaming + read API.
  *
- * EventBridge Scheduler invokes the tick Lambda every 1 minute (the
- * minimum supported by AWS Scheduler rate expressions). The tick:
- *   1. Generates bounded random-walk prices for 20 equities.
- *   2. Writes latest prices to DynamoDB.
- *   3. Publishes a PriceUpdated event to EventBridge.
+ * EventBridge Scheduler invokes the tick Lambda every 1 minute (the AWS
+ * Scheduler minimum). To meet the problem statement's 5-10 second tick
+ * requirement, each Lambda invocation runs an internal multi-tick burst
+ * that produces 8 PriceUpdated events spaced 7 seconds apart.
+ *
+ * From the dashboard's POV: continuous 7-second updates.
+ * From AWS billing's POV: 1 invocation/minute (~56s runtime each).
  *
  * Also exposes a read API (GET /prices) wired in ApiStack.
  */
@@ -46,9 +48,15 @@ export class MarketDataStack extends cdk.Stack {
     const tickFn = new NodeLambda(this, 'TickHandler', {
       entry: path.join(servicesRoot, 'tickHandler.ts'),
       functionName: `${config.prefix}-market-tick`,
-      description: 'Generate mock price updates and publish PriceUpdated event',
-      timeout: cdk.Duration.seconds(10),
-      environment: commonEnv,
+      description: 'Multi-tick burst: 8 price updates per invocation, 7s apart',
+      // Burst runs for ~8 ticks × 7s = 56s. 90s gives buffer for cold start
+      // + DynamoDB writes + EventBridge publishes per tick.
+      timeout: cdk.Duration.seconds(90),
+      environment: {
+        ...commonEnv,
+        TICKS_PER_INVOCATION: '8',
+        TICK_INTERVAL_MS: '7000',
+      },
     });
     pricesTable.grantReadWriteData(tickFn.function);
     eventBus.grantPutEventsTo(tickFn.function);
