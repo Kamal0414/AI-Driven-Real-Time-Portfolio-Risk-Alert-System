@@ -43,8 +43,8 @@ export const getConfig = (): AppConfig => ({
   valuationTtlHours: 24,
   insightTtlDays: 7,
   alertTtlDays: 7,
-  llmProvider: process.env.LLM_PROVIDER ?? 'mock',
+  llmProvider: process.env.LLM_PROVIDER ?? 'gemini',
   llmApiKeyParam: process.env.LLM_API_KEY_PARAM ?? '/prr/llm-api-key',
-  llmModel: process.env.LLM_MODEL ?? 'mock',
+  llmModel: process.env.LLM_MODEL ?? 'gemini-2.0-flash',
   logLevel: process.env.LOG_LEVEL ?? 'info',
 });
