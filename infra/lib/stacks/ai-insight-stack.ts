@@ -66,6 +66,14 @@ export class AiInsightStack extends cdk.Stack {
     eventBus.grantPutEventsTo(onRiskBreachedFn.function);
     aiQueue.grantConsumeMessages(onRiskBreachedFn.function);
 
+    // Grant SSM read for the LLM API key
+    onRiskBreachedFn.function.addToRolePolicy(
+      new cdk.aws_iam.PolicyStatement({
+        actions: ['ssm:GetParameter'],
+        resources: [`arn:aws:ssm:*:*:parameter${config.llmApiKeyParam}`],
+      }),
+    );
+
     onRiskBreachedFn.function.addEventSource(
       new lambdaEventSources.SqsEventSource(aiQueue, {
         batchSize: 1,

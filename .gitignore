@@ -13,10 +13,16 @@ cdk.out/
 *.log
 npm-debug.log*
 
-# env / secrets
+# env / secrets — NEVER commit API keys or AWS URLs
 .env
 .env.local
 .env.*.local
+*.pem
+*.key
+
+# Frontend env files (contain API Gateway URLs)
+frontend/dashboard/.env.local
+frontend/dashboard/.env
 
 # editors
 .vscode/
