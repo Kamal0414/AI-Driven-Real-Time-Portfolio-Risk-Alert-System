@@ -30,8 +30,16 @@ export const SEED_PRICES: Record<string, number> = {
 const PRICE_FLOOR_FACTOR = 0.5;   // min = 50% of seed price
 const PRICE_CEILING_FACTOR = 2.0; // max = 200% of seed price
 
-/** Maximum per-tick change as a fraction of current price. */
-const MAX_TICK_CHANGE = 0.015; // ±1.5%
+/**
+ * Maximum per-tick change as a fraction of current price.
+ *
+ * Set to ±3% to ensure all 3 risk rules can realistically trigger during
+ * a demo session. With ±1.5%, allocation drift and daily-drop alerts
+ * almost never fire because random walks tend to mean-revert. ±3% allows
+ * cumulative drift to build up over ~30-60 ticks (3-7 minutes at 7s tick
+ * rate) and gives genuine intraday drawdowns a real chance.
+ */
+const MAX_TICK_CHANGE = 0.03; // ±3%
 
 /**
  * Generate a random price change using a normal-ish distribution.
